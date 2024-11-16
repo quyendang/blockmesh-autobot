@@ -33,9 +33,9 @@ def generate_latency():
 def generate_response_time():
     return round(random.uniform(200.0, 600.0), 1)
 
-def get_ip_info(ip_address):
+def get_ip_info(proxy_config):
     try:
-        response = requests.get(f"https://ipwhois.app/json/{ip_address}")
+        response = requests.get("https://ipwhois.app/json", proxies=proxy_config, timeout=10)
         response.raise_for_status()
         return response.json()
     except requests.RequestException as err:
@@ -192,13 +192,13 @@ def format_proxy(proxy_string):
             "https": f"{proxy_type}://{host}:{port}"
         }
         
-    return proxy_dict, host
+    return proxy_dict
 
 def authenticate(proxy):
-    proxy_config, ip_address = format_proxy(proxy)
+    proxy_config = format_proxy(proxy)
     
     if proxy in proxy_tokens:
-        return proxy_tokens[proxy], ip_address
+        return proxy_tokens[proxy]
         
     login_data = {"email": email_input, "password": password_input}
     
@@ -210,11 +210,11 @@ def authenticate(proxy):
         
         proxy_tokens[proxy] = api_token
         
-        print(f"{Fore.LIGHTCYAN_EX}[{datetime.now().strftime('%H:%M:%S')}]{Fore.GREEN} Login successful {Fore.MAGENTA}|{Fore.LIGHTYELLOW_EX} {ip_address} {Style.RESET_ALL}")
-        return api_token, ip_address
+        print(f"{Fore.LIGHTCYAN_EX}[{datetime.now().strftime('%H:%M:%S')}]{Fore.GREEN} Login successful {Fore.MAGENTA}|{Fore.LIGHTYELLOW_EX} {Style.RESET_ALL}")
+        return api_token
     except requests.RequestException as err:
-        print(f"{Fore.LIGHTCYAN_EX}[{datetime.now().strftime('%H:%M:%S')}]{Fore.RED} Login failed {Fore.MAGENTA}|{Fore.LIGHTYELLOW_EX} {ip_address}: {err}{Style.RESET_ALL}")
-        return None, None
+        print(f"{Fore.LIGHTCYAN_EX}[{datetime.now().strftime('%H:%M:%S')}]{Fore.RED} Login failed {Fore.MAGENTA}|{Fore.LIGHTYELLOW_EX}: {err}{Style.RESET_ALL}")
+        return None
 
 def send_uptime_report(api_token, ip_addr, proxy):
     proxy_config, _ = format_proxy(proxy)
@@ -233,16 +233,16 @@ def process_proxy(proxy):
     first_run = True
     while True:
         if first_run or proxy not in proxy_tokens:
-            api_token, ip_address = authenticate(proxy)
+            api_token = authenticate(proxy)
             first_run = False
         else:
             api_token = proxy_tokens[proxy]
-            proxy_config, ip_address = format_proxy(proxy)
+            proxy_config = format_proxy(proxy)
             
         if api_token:
             proxy_config, _ = format_proxy(proxy)
-            ip_info = get_ip_info(ip_address)
-            
+            ip_info = get_ip_info(proxy_config)
+            ip_address = ip_info.get("ip")
             #connect_websocket(email_input, api_token)
             time.sleep(random.randint(60, 120))
             
